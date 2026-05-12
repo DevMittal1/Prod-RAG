@@ -18,6 +18,12 @@ dependencies = [
   "opentelemetry-sdk>=1.25.0",
   "structlog>=24.2.0",
   "tenacity>=8.3.0",
+  "motor>=3.4.0",
+  "aioboto3>=12.4.0",
+  "bcrypt>=4.0.0",
+  "python-jose[cryptography]>=3.3.0",
+  "python-multipart>=0.0.9",
+  "email-validator>=2.1.0",
 ]
 
 [project.optional-dependencies]

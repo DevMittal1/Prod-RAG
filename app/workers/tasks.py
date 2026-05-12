@@ -20,9 +20,14 @@ def ingest_documents(self, payload: dict) -> dict[str, int | str]:
         enriched = document.model_copy(
             update={"metadata": {**document.metadata, "tenant_id": request.tenant_id}}
         )
-        chunks.extend(chunk_document(enriched))
+        chunks.extend(
+            chunk_document(
+                enriched,
+                chunk_size=settings.document_chunk_size,
+                overlap=settings.document_chunk_overlap,
+            )
+        )
 
     indexed = indexer.index(chunks)
     logger.info("documents_indexed", tenant_id=request.tenant_id, indexed=indexed)
     return {"tenant_id": request.tenant_id, "indexed": indexed}
-

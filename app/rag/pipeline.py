@@ -38,31 +38,34 @@ class RAGPipeline:
         self.tracer = tracer
 
     async def answer(self, request: QueryRequest) -> QueryResponse:
-        trace_id = str(uuid4())
-        self.tracer.start_trace(trace_id, "rag_pipeline", {"query": request.query})
-        self.guardrails.validate_input(request.query)
+        trace_id = uuid4().hex
+        
+        with self.tracer.safe_start_trace(trace_id, "rag_pipeline", {"query": request.query}) as trace:
+            self.guardrails.validate_input(request.query)
 
-        conversation = await self.memory.get_session(request.user_id, request.session_id)
-        query_vector = await self.embeddings.embed_query(request.query)
-        retrieved = await self.retriever.retrieve(
-            query=request.query,
-            query_vector=query_vector,
-            filters=request.filters,
-        )
-        reranked = await self.reranker.rerank(request.query, retrieved)
-        top_k = request.top_k or self.settings.top_k_final
-        chunks = reranked[:top_k]
+            conversation = await self.memory.get_session(request.user_id, request.session_id)
+            query_vector = await self.embeddings.embed_query(request.query)
+            retrieved = await self.retriever.retrieve(
+                query=request.query,
+                query_vector=query_vector,
+                filters=request.filters,
+            )
+            reranked = await self.reranker.rerank(request.query, retrieved)
+            top_k = request.top_k or self.settings.top_k_final
+            chunks = reranked[:top_k]
 
-        answer = await self.llm.generate(
-            query=request.query,
-            chunks=chunks,
-            conversation=conversation,
-        )
-        self.guardrails.validate_output(answer)
-        await self.memory.append_turn(request.user_id, request.session_id, request.query, answer)
-        self.tracer.end_trace(trace_id, {"answer": answer, "chunk_count": len(chunks)})
+            answer = await self.llm.generate(
+                query=request.query,
+                chunks=chunks,
+                conversation=conversation,
+            )
+            self.guardrails.validate_output(answer)
+            await self.memory.append_turn(request.user_id, request.session_id, request.query, answer)
+            
+            if trace and hasattr(trace, 'update'):
+                trace.update(output={"answer": answer, "chunk_count": len(chunks)})
 
-        return QueryResponse(answer=answer, chunks=chunks, trace_id=trace_id)
+            return QueryResponse(answer=answer, chunks=chunks, trace_id=trace_id)
 
 
 def format_context(chunks: list[RetrievedChunk]) -> str:

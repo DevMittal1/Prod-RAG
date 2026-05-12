@@ -19,3 +19,15 @@ class JobResponse(BaseModel):
     job_id: str
     status: str
 
+class DocumentMetadataResponse(BaseModel):
+    id: str = Field(alias="_id")
+    user_id: str
+    filename: str
+    s3_key: str
+    content_type: str
+    size: int
+    created_at: str
+
+class DocumentListResponse(BaseModel):
+    documents: list[DocumentMetadataResponse]
+

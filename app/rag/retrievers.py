@@ -1,6 +1,7 @@
 from qdrant_client import AsyncQdrantClient
 from qdrant_client import models
 from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 from app.core.config import Settings
 from app.rag.sparse import sparse_text_vector
@@ -28,27 +29,32 @@ class HybridRetriever:
             self.settings.top_k_sparse,
             self.settings.top_k_final,
         )
-        response = await self.client.query_points(
-            collection_name=self.settings.qdrant_collection,
-            prefetch=[
-                models.Prefetch(
-                    query=query_vector,
-                    using=DENSE_VECTOR_NAME,
-                    limit=self.settings.top_k_dense,
-                    filter=qdrant_filter(filters),
-                ),
-                models.Prefetch(
-                    query=sparse_text_vector(query),
-                    using=SPARSE_VECTOR_NAME,
-                    limit=self.settings.top_k_sparse,
-                    filter=qdrant_filter(filters),
-                ),
-            ],
-            query=models.FusionQuery(fusion=models.Fusion.RRF),
-            query_filter=qdrant_filter(filters),
-            limit=limit,
-            with_payload=True,
-        )
+        try:
+            response = await self.client.query_points(
+                collection_name=self.settings.qdrant_collection,
+                prefetch=[
+                    models.Prefetch(
+                        query=query_vector,
+                        using=DENSE_VECTOR_NAME,
+                        limit=self.settings.top_k_dense,
+                        filter=qdrant_filter(filters),
+                    ),
+                    models.Prefetch(
+                        query=sparse_text_vector(query),
+                        using=SPARSE_VECTOR_NAME,
+                        limit=self.settings.top_k_sparse,
+                        filter=qdrant_filter(filters),
+                    ),
+                ],
+                query=models.FusionQuery(fusion=models.Fusion.RRF),
+                query_filter=qdrant_filter(filters),
+                limit=limit,
+                with_payload=True,
+            )
+        except UnexpectedResponse as e:
+            if e.status_code == 404 and b"Not found: Collection" in (e.content or b""):
+                return []
+            raise
         return [
             RetrievedChunk(
                 id=str((point.payload or {}).get("id", point.id)),

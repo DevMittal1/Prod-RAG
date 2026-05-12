@@ -1,4 +1,5 @@
-from typing import Any
+import contextlib
+from typing import Any, ContextManager
 
 import structlog
 
@@ -22,13 +23,17 @@ class LangfuseTracer:
             except Exception as exc:
                 logger.warning("langfuse_unavailable", error=str(exc))
 
-    def start_trace(self, trace_id: str, name: str, payload: dict[str, Any]) -> None:
+    def safe_start_trace(self, trace_id: str, name: str, payload: dict[str, Any]) -> ContextManager[Any]:
         logger.info("trace_start", trace_id=trace_id, name=name, payload=payload)
         if self.client:
-            self.client.trace(id=trace_id, name=name, input=payload)
-
-    def end_trace(self, trace_id: str, payload: dict[str, Any]) -> None:
-        logger.info("trace_end", trace_id=trace_id, payload=payload)
-        if self.client:
-            self.client.trace(id=trace_id, output=payload)
+            try:
+                return self.client.start_as_current_observation(
+                    name=name,
+                    input=payload,
+                    trace_context={"trace_id": trace_id},
+                    as_type="span",
+                )
+            except Exception:
+                logger.exception("Langfuse tracing failed")
+        return contextlib.nullcontext()
 

@@ -10,8 +10,11 @@ class Settings(BaseSettings):
     )
 
     app_name: str = "Production RAG"
+    app_version: str = "1.0.0"
     environment: str = "local"
     log_level: str = "INFO"
+    platform_profile: str = "enterprise"
+    document_domain: str = "legal"
 
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.0-flash"
@@ -33,6 +36,22 @@ class Settings(BaseSettings):
     top_k_dense: int = Field(default=30, ge=1)
     top_k_sparse: int = Field(default=30, ge=1)
     top_k_final: int = Field(default=8, ge=1)
+    document_chunk_size: int = Field(default=1200, ge=100)
+    document_chunk_overlap: int = Field(default=150, ge=0)
+    legal_citations_required: bool = True
+    legal_required_metadata_fields: str = "tenant_id,department,role,tags"
+
+    secret_key: str = "supersecretkey"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+
+    mongodb_url: str = "mongodb://localhost:27017"
+    mongodb_db_name: str = "production_rag"
+
+    s3_access_key: str = "minioadmin"
+    s3_secret_key: str = "minioadmin"
+    s3_bucket_name: str = "production-rag-docs"
+    s3_region: str = "us-east-1"
 
 
 @lru_cache

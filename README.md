@@ -1,6 +1,6 @@
 # Production RAG Backend
 
-Modular FastAPI backend for enterprise RAG with async workers, hybrid retrieval, metadata filtering, reranking, memory, observability, guardrails, and evaluation hooks.
+Configurable FastAPI backend for enterprise and legal-document RAG with async workers, hybrid retrieval, metadata filtering, reranking, memory, observability, guardrails, file storage, and evaluation hooks.
 
 ## Stack
 
@@ -9,6 +9,8 @@ Modular FastAPI backend for enterprise RAG with async workers, hybrid retrieval,
 - LLM + embeddings: Gemini API via `google-genai`
 - Hybrid search: Qdrant named dense/sparse vectors with built-in RRF fusion
 - Memory: Redis adapter
+- Metadata: MongoDB
+- File storage: S3-compatible storage / MinIO
 - Orchestration: service graph in `app/rag/pipeline.py`
 - Observability: OpenTelemetry + optional Langfuse
 - Evaluation: lightweight local evaluator hooks, ready for RAGAS/DeepEval
@@ -34,15 +36,36 @@ celery -A app.workers.celery_app worker --loglevel=INFO
 ## API
 
 - `GET /health`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
 - `POST /api/v1/query`
-- `POST /api/v1/documents`
-- `GET /api/v1/jobs/{job_id}`
+- `POST /api/v1/documents/ingest`
+- `POST /api/v1/documents/upload`
+- `GET /api/v1/documents/jobs/{job_id}`
 - `POST /api/v1/evaluations/rag`
+- `GET /api/v1/history`
+- `CRUD /api/v1/admin/tenants`
+- `CRUD /api/v1/admin/departments`
+- `CRUD /api/v1/admin/tags`
+- `CRUD /api/v1/admin/roles`
+- `CRUD /api/v1/admin/sessions`
+- `CRUD /api/v1/admin/users`
 
 ## Architecture
 
 See [docs/architecture.md](/Users/dev/Documents/resume-projects/productionRAG/docs/architecture.md) for the end-to-end RAG architecture diagram.
 See [docs/end-to-end.md](/Users/dev/Documents/resume-projects/productionRAG/docs/end-to-end.md) for the full engineering documentation and runbook.
+
+## Legal Document Profile
+
+The default `.env.example` profile is enterprise legal RAG:
+
+- `PLATFORM_PROFILE=enterprise`
+- `DOCUMENT_DOMAIN=legal`
+- `DOCUMENT_CHUNK_SIZE=1200`
+- `DOCUMENT_CHUNK_OVERLAP=150`
+- `LEGAL_CITATIONS_REQUIRED=true`
+- `LEGAL_REQUIRED_METADATA_FIELDS=tenant_id,department,role,tags`
 
 ## Gemini Embeddings
 
