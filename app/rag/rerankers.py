@@ -1,5 +1,6 @@
-from app.schemas.common import RetrievedChunk
+import asyncio
 
+from app.schemas.common import RetrievedChunk
 
 class Reranker:
     def __init__(self, model_name: str = "BAAI/bge-reranker-large") -> None:
@@ -12,7 +13,7 @@ class Reranker:
             return chunks
 
         pairs = [[query, chunk.text] for chunk in chunks]
-        scores = model.predict(pairs)
+        scores = await asyncio.to_thread(model.predict, pairs)
         reranked = [
             chunk.model_copy(update={"score": float(score)})
             for chunk, score in zip(chunks, scores, strict=False)

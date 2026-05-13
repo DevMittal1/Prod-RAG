@@ -1,12 +1,14 @@
 services:
   api:
-    build: .
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     env_file: .env
     ports:
       - "8000:8000"
 
   worker:
-    build: .
-    command: celery -A app.workers.celery_app worker --loglevel=INFO
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
     env_file: .env
