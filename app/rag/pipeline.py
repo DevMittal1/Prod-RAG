@@ -6,7 +6,7 @@ from app.core.config import Settings
 from app.guardrails.policy import GuardrailService
 from app.memory.base import MemoryStore
 from app.observability.base import TraceClient
-from app.rag.embeddings import EmbeddingService
+from app.rag.embeddings import GeminiEmbeddingService
 from app.rag.llm import LLMGateway
 from app.rag.rerankers import Reranker
 from app.rag.retrievers import HybridRetriever
@@ -20,7 +20,7 @@ class RAGPipeline:
     def __init__(
         self,
         settings: Settings,
-        embeddings: EmbeddingService,
+        embeddings: GeminiEmbeddingService,
         retriever: HybridRetriever,
         reranker: Reranker,
         llm: LLMGateway,
@@ -39,11 +39,15 @@ class RAGPipeline:
 
     async def answer(self, request: QueryRequest) -> QueryResponse:
         trace_id = uuid4().hex
-        
-        with self.tracer.safe_start_trace(trace_id, "rag_pipeline", {"query": request.query}) as trace:
+
+        with self.tracer.safe_start_trace(
+            trace_id, "rag_pipeline", {"query": request.query}
+        ) as trace:
             self.guardrails.validate_input(request.query)
 
-            conversation = await self.memory.get_session(request.user_id, request.session_id)
+            conversation = await self.memory.get_session(
+                request.user_id, request.session_id
+            )
             query_vector = await self.embeddings.embed_query(request.query)
             retrieved = await self.retriever.retrieve(
                 query=request.query,
@@ -60,9 +64,11 @@ class RAGPipeline:
                 conversation=conversation,
             )
             self.guardrails.validate_output(answer)
-            await self.memory.append_turn(request.user_id, request.session_id, request.query, answer)
-            
-            if trace and hasattr(trace, 'update'):
+            await self.memory.append_turn(
+                request.user_id, request.session_id, request.query, answer
+            )
+
+            if trace and hasattr(trace, "update"):
                 trace.update(output={"answer": answer, "chunk_count": len(chunks)})
 
             return QueryResponse(answer=answer, chunks=chunks, trace_id=trace_id)
